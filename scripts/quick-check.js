@@ -584,7 +584,7 @@ function checkWallpaperEngineImportGuard() {
     || !/'applyProperties'/.test(runtimeText)
     || !/RAW~\(\$\{JSON\.stringify\(properties\)\}\)~END/.test(runtimeText)
     || !/windowsVerbatimArguments:\s*!!verbatimArgs/.test(runtimeText)
-    || !/cwd:\s*path\.dirname\(executable\)/.test(runtimeText)
+    || !/cwd:\s*path\.win32\.dirname\(executable\)/.test(runtimeText)
     || /['"]mute['"]/.test(runtimeText)
     || !/openWallpaperEngineProjectDetails/.test(rendererText)
     || !/wallpaper-engine-details-drawer/.test(htmlText)
