@@ -2699,7 +2699,7 @@ class WallpaperEngineRuntime {
     return new Promise((resolve, reject) => {
       try {
         const verbatimArgs = verbatimWallpaperControlArguments(args);
-        const controlExecutable = verbatimArgs ? path.basename(executable) : executable;
+        const controlExecutable = verbatimArgs ? path.win32.basename(executable) : executable;
         const controlArgs = verbatimArgs || args;
         this.controlExecFile(controlExecutable, controlArgs, {
           encoding: 'utf8',
@@ -2708,7 +2708,7 @@ class WallpaperEngineRuntime {
           maxBuffer: 32 * 1024,
           shell: false,
           windowsVerbatimArguments: !!verbatimArgs,
-          ...(verbatimArgs ? { cwd: path.dirname(executable) } : {}),
+          ...(verbatimArgs ? { cwd: path.win32.dirname(executable) } : {}),
         }, (error, _stdout, stderr) => {
           if (error) {
             const action = String(args && args[1] || 'control').replace(/[^a-z0-9_-]/gi, '').slice(0, 48) || 'control';
