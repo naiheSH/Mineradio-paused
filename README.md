@@ -110,6 +110,10 @@ Mineradio 由 XxHuberrr 主要设计与打造。emily 作为早期视觉底层�
 
 同时感谢小天才e宝、应春日、锋将军、軌跡、林中、骊、风痕、花椰菜🥦在早期体验、测试反馈和发布准备中的帮助。
 
+也感谢向 [XxHuberrr/Mineradio-paused](https://github.com/XxHuberrr/Mineradio-paused) 提交过拉取请求的各位作者。无论改动是否进入本仓库，这些审查、修复和功能提案都帮助记录了项目的后续方向：
+
+Azure12355、CY-OPSS、CyberFork、Ericent-afk、Hao610、MULIAN123、Morphex-Mo、MrChenyh、NateHu203、OLDBRO-max、ParadoxMoranis、QinLinag、RANGER-ALT823650、ShenTuZ、SpicyTripe、TTQ-88、ThySummer14、TianYa-DAO、Warm-winter、Wymshibaba、YannZhou、Yxiguan、ZhangJun-troll、Zhengyici、averatec0773、awei0428、caijingchen864-gif、daaimengermengzhu、daimoasb、gameimpact、hdward-dev、icatw、jade2-fff、kcncb、kj578155373-sys、laoshuikaixue、lidonghaofirst、lorenzozanee、luyang668899、nlqh7、nowa277、nxz1026、pythonL-oss、rzzzi、sAchNMN、sksnna、sunleo994946-source、swording-k、tao666618、tianyu0919、we1jia、xianyu-sheng、xiaoliziawa、xkitme、yyhnr114514、zhulin025、zouyonghe。
+
 ## 版权与授权
 
 Copyright (C) 2026 XxHuberrr.

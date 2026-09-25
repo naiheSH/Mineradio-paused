@@ -58,6 +58,7 @@ const http = require('http');
 const https = require('https');
 const fs   = require('fs');
 const path = require('path');
+const os = require('os');
 const crypto = require('crypto');
 const tls = require('tls');
 const { fileURLToPath } = require('url');
@@ -137,7 +138,14 @@ const DEFAULT_COOKIE_FILE = path.join(__dirname, '.cookie');
 const DEFAULT_QQ_COOKIE_FILE = path.join(__dirname, '.qq-cookie');
 const DEFAULT_KUGOU_COOKIE_FILE = path.join(__dirname, '.kugou-cookie');
 const DEFAULT_QISHUI_COOKIE_FILE = path.join(__dirname, '.qishui-cookie');
-const BEATMAP_CACHE_DIR = process.env.MINERADIO_BEAT_CACHE_DIR || 'D:\\MineradioCache\\beatmaps';
+function defaultBeatmapCacheDir() {
+  if (process.env.MINERADIO_BEAT_CACHE_DIR) return process.env.MINERADIO_BEAT_CACHE_DIR;
+  if (process.platform === 'win32') return 'D:\\MineradioCache\\beatmaps';
+  if (process.platform === 'darwin') return path.join(os.homedir(), 'Library', 'Caches', 'Mineradio', 'beatmaps');
+  const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
+  return path.join(base, 'Mineradio', 'beatmaps');
+}
+const BEATMAP_CACHE_DIR = defaultBeatmapCacheDir();
 const CUEFIELD_FEEDBACK_FILE = process.env.CUEFIELD_FEEDBACK_FILE || path.join(__dirname, 'data', 'cuefield-feedback.jsonl');
 const LISTEN_SYNC_JOURNAL_FILE = process.env.MINERADIO_LISTEN_SYNC_FILE || path.join(__dirname, 'data', 'listen-sync-journal.json');
 const LISTEN_SYNC_JOURNAL_LIMIT = 600;
@@ -709,7 +717,10 @@ async function fetchManifestUpdateInfo(ref) {
 function beatCacheRootInfo() {
   const dir = path.resolve(BEATMAP_CACHE_DIR);
   const root = path.parse(dir).root;
-  const drive = root ? root.replace(/[\\\/]+$/, '').toUpperCase() : '';
+  const drive = root ? root.replace(/[\\/]+$/, '').toUpperCase() : '';
+  if (process.platform !== 'win32') {
+    return { dir, root, drive, allowed: !!root, available: !!root };
+  }
   const allowed = !!root && !/^C:$/i.test(drive);
   const available = allowed && fs.existsSync(root);
   return { dir, root, drive, allowed, available };
