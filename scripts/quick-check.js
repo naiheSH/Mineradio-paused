@@ -1499,7 +1499,7 @@ function checkLyricScrollPerformanceGuard() {
     !/function canResumePausedAudioFast/.test(controlsText) ||
     !/function resumePausedAudioFast/.test(controlsText) ||
     !/function schedulePausedAudioResumeMaintenance/.test(controlsText) ||
-    !/var fastResume = await resumePausedAudioFast\(opts\);[\s\S]{0,80}if \(fastResume === true\) return true;[\s\S]{0,140}if \(!audioGraphHealthy\(\)\) initAudio\(\);/.test(controlsText) ||
+    !/var fastResume = await resumePausedAudioFast\(opts\);[\s\S]{0,220}if \(fastResume === true\) return true;[\s\S]{0,420}if \(!audioGraphHealthy\(\)\) initAudio\(\);/.test(controlsText) ||
     !/restorePlaybackGain\(\);[\s\S]{0,120}await awaitMediaPlayWithTimeout\(media, media\.play\(\), token\);/.test(controlsText) ||
     !/setTimeout\(async function \(\) \{[\s\S]{0,240}ensurePlaybackAudioGraph\(\(reason \|\| 'manual-resume-fast'\) \+ '-deferred-graph'\)/.test(controlsText)
   ) {
