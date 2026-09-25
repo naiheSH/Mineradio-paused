@@ -30,7 +30,7 @@ if (!section) {
 const notes = [
   `## Mineradio v${version}`,
   '',
-  '这是草稿发布。Windows 安装包是主发布物。macOS 是未签名、未公证的 Apple Silicon 包。Linux 是未签名 AppImage。',
+  '这是预发布，不是正式版。Windows 安装包是主发布物。macOS 是未签名、未公证的 Apple Silicon DMG。Linux 是未签名 AppImage。',
   '',
   '完整桌面嵌入和 Wallpaper Engine 仍然只在 Windows 上可用。macOS 不能清理系统待机列表。',
   '',

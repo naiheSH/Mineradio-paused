@@ -209,10 +209,15 @@ jobs:
         run: |
           set -eu
           mkdir -p release
-          find artifacts -type f \( -name '*.dmg' -o -name 'SHA256SUMS-macos.txt' \) -exec cp -n {} release/ \;
-          test -n "$(find release -name '*.dmg' -print -quit)"
-          gh release download v2.3.0 --repo "${GITHUB_REPOSITORY}" --pattern 'Mineradio-2.3.0-Setup.exe*' --pattern 'Mineradio-2.3.0-linux-*' --pattern 'SHA256SUMS-windows.txt' --pattern 'SHA256SUMS-linux.txt' --dir release --clobber
-          node scripts/extract-release-notes.js "${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.platforms }}" = "macos" ]; then
+            find artifacts -type f \( -name '*.dmg' -o -name 'SHA256SUMS-macos.txt' \) -exec cp {} release/ \;
+            test -n "$(find release -name '*.dmg' -print -quit)"
+            gh release download v2.3.0 --repo "${GITHUB_REPOSITORY}" --pattern 'Mineradio-2.3.0-Setup.exe*' --pattern 'Mineradio-2.3.0-linux-*' --pattern 'SHA256SUMS-windows.txt' --pattern 'SHA256SUMS-linux.txt' --dir release --clobber
+          else
+            find artifacts -type f \( -name '*.exe' -o -name '*.blockmap' -o -name '*.dmg' -o -name '*.AppImage' -o -name 'SHA256SUMS-*.txt' \) -exec cp {} release/ \;
+          fi
+          version="$(node -p "require('./package.json').version")"
+          node scripts/extract-release-notes.js "v${version}"
           test -s release-notes.md
           grep -q '## 更新日志' release-notes.md
       - name: Update prerelease
