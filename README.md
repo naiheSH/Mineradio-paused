@@ -114,7 +114,7 @@ Mineradio 由 XxHuberrr 主要设计与打造。emily 作为早期视觉底层�
 
 Azure12355、CY-OPSS、CyberFork、Ericent-afk、Hao610、MULIAN123、Morphex-Mo、MrChenyh、NateHu203、OLDBRO-max、ParadoxMoranis、QinLinag、RANGER-ALT823650、ShenTuZ、SpicyTripe、TTQ-88、ThySummer14、TianYa-DAO、Warm-winter、Wymshibaba、YannZhou、Yxiguan、ZhangJun-troll、Zhengyici、averatec0773、awei0428、caijingchen864-gif、daaimengermengzhu、daimoasb、gameimpact、hdward-dev、icatw、jade2-fff、kcncb、kj578155373-sys、laoshuikaixue、lidonghaofirst、lorenzozanee、luyang668899、nlqh7、nowa277、nxz1026、pythonL-oss、rzzzi、sAchNMN、sksnna、sunleo994946-source、swording-k、tao666618、tianyu0919、we1jia、xianyu-sheng、xiaoliziawa、xkitme、yyhnr114514、zhulin025、zouyonghe。
 
-`naihe` 分支另从 Azure12355 的 `#485` 迁入了 Apple Silicon 的图形后端、原生全屏和未签名 arm64 打包，并从 RANGER-ALT823650 的 `#67` 迁入了红绿灯标题栏、触控板降敏和 Cmd/Opt 热键显示。系统内存清理在 Linux 上按 YannZhou 的 `#476` 读取 `/proc/meminfo`：后台只做不需要 root 的 `sync`，清页缓存和内存整理只在手动操作时走 `pkexec`。macOS 只能释放本进程内存，不能清系统待机列表，也不调用需要授权的 `purge`。完整桌面嵌入和 Wallpaper Engine 仍只支持 Windows：上游没有可替代 WorkerW 嵌入或 Windows 版 Wallpaper Engine 宿主的 macOS / Linux 实现。
+`naihe` 分支另从 Azure12355 的 `#485` 迁入了 Apple Silicon 的图形后端、原生全屏和未签名 arm64 DMG，并从 RANGER-ALT823650 的 `#67` 迁入了红绿灯标题栏、触控板降敏和 Cmd/Opt 热键显示。系统内存清理在 Linux 上按 YannZhou 的 `#476` 读取 `/proc/meminfo`：后台只做不需要 root 的 `sync`，清页缓存和内存整理只在手动操作时走 `pkexec`。macOS 只能释放本进程内存，不能清系统待机列表，也不调用需要授权的 `purge`。完整桌面嵌入和 Wallpaper Engine 仍只支持 Windows：上游没有可替代 WorkerW 嵌入或 Windows 版 Wallpaper Engine 宿主的 macOS / Linux 实现。
 
 ## 版权与授权
 

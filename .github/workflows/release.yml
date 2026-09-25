@@ -1,9 +1,7 @@
-name: Release
-
-# Draft-only release. Adapted from the release job in PR #404, without its
-# other 15 workflows. Windows is the official installer. macOS arm64 is an
-# unsigned directory/DMG. Linux is an unsigned AppImage. Nothing here points
-# at a fork release or rewrites the pause notice.
+# Draft release. Adapted from the release job in PR #404, without its other
+# 15 workflows. Windows is the official installer. macOS arm64 is an unsigned
+# DMG. Linux is an unsigned AppImage. Nothing here points at a fork release
+# or rewrites the pause notice.
 
 on:
   push:
@@ -11,10 +9,13 @@ on:
       - 'v*.*.*'
   workflow_dispatch:
     inputs:
-      draft:
-        description: 'Keep the GitHub release as a draft'
-        type: boolean
-        default: true
+      platforms:
+        description: 'Which installers to build'
+        type: choice
+        options:
+          - all
+          - macos
+        default: all
 
 permissions:
   contents: read
@@ -63,6 +64,7 @@ jobs:
 
   build-windows:
     needs: test
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms == 'all'
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -119,29 +121,34 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           ELECTRON_CACHE: ${{ runner.temp }}/electron-cache
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
-      - name: Build unsigned macOS arm64 app
-        run: npm run build:mac:dir
+      - name: Build unsigned macOS arm64 DMG
+        run: npm run build:mac
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           ELECTRON_CACHE: ${{ runner.temp }}/electron-cache
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/electron-builder-cache
-      - name: Archive and hash
+      - name: Verify package and hash
         run: |
           set -eu
           node scripts/verify-package.js
-          ditto -c -k --keepParent dist/mac-arm64/Mineradio.app "dist/Mineradio-${{ github.ref_name }}-mac-arm64-unsigned.zip"
-          shasum -a 256 "dist/Mineradio-${{ github.ref_name }}-mac-arm64-unsigned.zip" > dist/SHA256SUMS-macos.txt
+          files=(dist/*.dmg)
+          if [ ! -e "${files[0]}" ]; then
+            echo "::error::No DMG found in dist/"
+            exit 1
+          fi
+          shasum -a 256 "${files[@]}" > dist/SHA256SUMS-macos.txt
       - uses: actions/upload-artifact@v4
         with:
           name: macos-arm64
           path: |
-            dist/Mineradio-*-mac-arm64-unsigned.zip
+            dist/*.dmg
             dist/SHA256SUMS-macos.txt
           if-no-files-found: error
           retention-days: 14
 
   build-linux:
     needs: test
+    if: github.event_name != 'workflow_dispatch' || inputs.platforms == 'all'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -186,6 +193,7 @@ jobs:
           retention-days: 14
   publish:
     needs: [build-windows, build-macos, build-linux]
+    if: always() && needs.build-macos.result == 'success' && (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') && (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -196,17 +204,21 @@ jobs:
         with:
           path: artifacts
       - name: Collect release files and handwritten notes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
           mkdir -p release
-          find artifacts -type f -print -exec cp -n {} release/ \;
+          find artifacts -type f \( -name '*.dmg' -o -name 'SHA256SUMS-macos.txt' \) -exec cp -n {} release/ \;
+          test -n "$(find release -name '*.dmg' -print -quit)"
+          gh release download v2.3.0 --repo "${GITHUB_REPOSITORY}" --pattern 'Mineradio-2.3.0-Setup.exe*' --pattern 'Mineradio-2.3.0-linux-*' --pattern 'SHA256SUMS-windows.txt' --pattern 'SHA256SUMS-linux.txt' --dir release --clobber
           node scripts/extract-release-notes.js "${GITHUB_REF_NAME}"
           test -s release-notes.md
           grep -q '## 更新日志' release-notes.md
-      - name: Create draft release
+      - name: Update prerelease
         uses: softprops/action-gh-release@v2
         with:
-          draft: ${{ github.event_name != 'workflow_dispatch' || inputs.draft }}
+          draft: false
           prerelease: true
           fail_on_unmatched_files: true
           files: release/*

@@ -2,7 +2,7 @@
   "name": "mineradio",
   "productName": "Mineradio",
   "version": "2.3.0",
-  "description": "沉浸式音乐播放器，融合桌面模式、歌词舞台、粒子视觉和 3D 歌单架。Windows 为主要发布平台，macOS Apple Silicon 可本地运行和未签名打包。",
+  "description": "沉浸式音乐播放器，融合桌面模式、歌词舞台、粒子视觉和 3D 歌单架。Windows 为主要发布平台，macOS Apple Silicon 可本地运行和未签名 DMG 打包。",
   "author": "Mineradio",
   "license": "GPL-3.0-only",
   "main": "desktop/main.js",

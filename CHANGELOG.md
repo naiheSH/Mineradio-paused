@@ -4,7 +4,7 @@
 
 - 补齐 GitHub CI 与草稿发布流程。发布说明只读取本文件对应版本，不再用提交记录自动生成。思路来自 [#473](https://github.com/XxHuberrr/Mineradio-paused/pull/473) 和 [#404](https://github.com/XxHuberrr/Mineradio-paused/pull/404)，没有整包合入。
 - Windows、macOS、Linux 打包都关闭自动签名发现，并使用 runner 本地 Electron 缓存。
-- macOS Apple Silicon 可本地运行，支持原生全屏、红绿灯和未签名 arm64 目录包。窗口与打包来自 [#485](https://github.com/XxHuberrr/Mineradio-paused/pull/485)，红绿灯、触控板降敏和 Cmd/Opt 热键来自 [#67](https://github.com/XxHuberrr/Mineradio-paused/pull/67)。
+- macOS Apple Silicon 可本地运行，支持原生全屏、红绿灯和未签名 arm64 DMG。窗口与打包来自 [#485](https://github.com/XxHuberrr/Mineradio-paused/pull/485)，红绿灯、触控板降敏和 Cmd/Opt 热键来自 [#67](https://github.com/XxHuberrr/Mineradio-paused/pull/67)。
 - 恢复 macOS GPU 光栅化，缓解歌词与毛玻璃动画卡顿；不启用会破坏 Metal 合成的 zero-copy，也不采用 [#330](https://github.com/XxHuberrr/Mineradio-paused/pull/330) 的全平台 OpenGL 或 [#394](https://github.com/XxHuberrr/Mineradio-paused/pull/394) 的 Metal 强制开关。
 - 后台内存清理不再自动弹 UAC，来自 [#439](https://github.com/XxHuberrr/Mineradio-paused/pull/439)。Linux 只做不需要 root 的 sync，清页缓存只在手动操作时提权，来自 [#476](https://github.com/XxHuberrr/Mineradio-paused/pull/476)。
 - macOS 只释放本进程内存，不调用需要授权的 purge，也不能清理系统待机列表。
