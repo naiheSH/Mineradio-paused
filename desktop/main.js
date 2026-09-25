@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog, Tray, Menu, protocol, desktopCapturer, powerMonitor } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, screen, session, globalShortcut, dialog, Tray, Menu, protocol, desktopCapturer, powerMonitor, nativeImage } = require('electron');
 const net = require('net');
 const http = require('http');
 const path = require('path');
@@ -6,6 +6,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const { execFile, spawn } = require('child_process');
 const systemMemory = require('./system-memory');
+const { createMacFullscreenController } = require('./macos-fullscreen');
 const {
   WallpaperEngineLibrary,
   registerWallpaperEngineScheme,
@@ -102,7 +103,8 @@ const APP_PACKAGE_INFO = (() => {
 const APP_METADATA = APP_PACKAGE_INFO.mineradio || {};
 const APP_NAME = process.env.MINERADIO_RUNTIME_NAME || APP_METADATA.runtimeName || APP_PACKAGE_INFO.productName || 'Mineradio';
 const APP_USER_MODEL_ID = process.env.MINERADIO_APP_USER_MODEL_ID || APP_METADATA.appUserModelId || (APP_PACKAGE_INFO.build && APP_PACKAGE_INFO.build.appId) || 'com.mineradio.desktop';
-const APP_ICON_ICO = path.join(__dirname, '..', 'build', 'icon.ico');
+const APP_ICON_PATH = path.join(__dirname, '..', 'build', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+const APP_ICON_ICO = APP_ICON_PATH;
 const CURRENT_FX_AUTOSAVE_FILE = 'current-fx-autosave.json';
 const CURRENT_FX_AUTOSAVE_MAX_BYTES = 12 * 1024 * 1024;
 const STARTUP_ERROR_LOG_FILE = 'startup-error.log';
@@ -477,11 +479,17 @@ try {
 
 const CHROMIUM_SAFE_PERFORMANCE_SWITCHES = [
   ['autoplay-policy', 'no-user-gesture-required'],
+  // GPU rasterization and the accelerated 2D canvas are safe on Metal and keep
+  // lyric/glass animation off the software path. Zero-copy rasterization is not:
+  // it produces SharedImage / Invalid mailbox on macOS. Direct3D stays Windows-only.
+  // Ported from Azure12355 PR #485, with the macOS animation path restored.
   ['enable-gpu-rasterization'],
   ['enable-oop-rasterization'],
-  ['enable-zero-copy'],
+  ...(process.platform === 'darwin' ? [] : [
+    ['enable-zero-copy'],
+  ]),
   ['enable-accelerated-2d-canvas'],
-  ['use-angle', 'd3d11'],
+  ...(process.platform === 'win32' ? [['use-angle', 'd3d11']] : []),
 ];
 const CHROMIUM_OPT_IN_PERFORMANCE_SWITCHES = [
   ['ignore-gpu-blocklist', null, 'MINERADIO_IGNORE_GPU_BLOCKLIST'],
@@ -1902,7 +1910,7 @@ function getWindowState(win) {
 }
 
 function setMainWindowFullscreenResizeGuard(win, fullscreen) {
-  if (!win || win.isDestroyed()) return;
+  if (!win || win.isDestroyed() || process.platform === 'darwin') return;
   const shouldResize = !fullscreen;
   try {
     if (typeof win.isResizable === 'function' && win.isResizable() === shouldResize) return;
@@ -1929,13 +1937,11 @@ async function getGpuDiagnostics() {
   return {
     status,
     basicInfo,
-    switches: {
-      safeGpuRasterization: true,
-      ignoreGpuBlocklist: process.env.MINERADIO_IGNORE_GPU_BLOCKLIST === '1',
-      forceHighPerformanceGpu: process.env.MINERADIO_FORCE_HIGH_PERFORMANCE_GPU === '1',
-      keepBackgroundRendering: process.env.MINERADIO_KEEP_BACKGROUND_RENDERING === '1',
-      angle: 'd3d11',
-    },
+    safeGpuRasterization: true,
+    ignoreGpuBlocklist: process.env.MINERADIO_IGNORE_GPU_BLOCKLIST === '1',
+    forceHighPerformanceGpu: process.env.MINERADIO_FORCE_HIGH_PERFORMANCE_GPU === '1',
+    keepBackgroundRendering: process.env.MINERADIO_KEEP_BACKGROUND_RENDERING === '1',
+    angle: process.platform === 'win32' ? 'd3d11' : 'default',
   };
 }
 
@@ -1989,7 +1995,7 @@ async function trimAppMemoryNow(reason) {
 }
 
 function scheduleAppMemoryTrim(reason, delay = 9000) {
-  if (process.platform !== 'win32') return;
+  if (process.platform !== 'win32' && process.platform !== 'linux' && process.platform !== 'darwin') return;
   if (memoryAutoState.appTrimEnabled === false || memoryAutoState.backgroundTrimEnabled === false) return;
   if (Date.now() - lastAppMemoryTrimAt < 120000) return;
   if (appMemoryTrimTimer) clearTimeout(appMemoryTrimTimer);
@@ -2107,10 +2113,12 @@ function focusMainWindow() {
 }
 
 function createOrUpdateTray() {
-  if (process.platform !== 'win32' && process.platform !== 'linux') return;
+  if (!['win32', 'linux', 'darwin'].includes(process.platform)) return;
   if (!tray) {
     try {
-      tray = new Tray(APP_ICON_ICO);
+      tray = new Tray(process.platform === 'darwin'
+        ? nativeImage.createFromPath(APP_ICON_PATH).resize({ width: 18, height: 18 })
+        : APP_ICON_PATH);
       tray.setToolTip(APP_NAME);
       tray.on('click', () => focusMainWindow());
       tray.on('double-click', () => focusMainWindow());
@@ -3381,6 +3389,7 @@ function getAdaptiveWindowMinimumSize(display) {
 
 function updateMainWindowMinimumSize(win) {
   if (!win || win.isDestroyed()) return;
+  if (win.__macFullscreen && (win.isFullScreen() || win.__macFullscreen.isTransitioning())) return;
   const minimum = getAdaptiveWindowMinimumSize(getWindowDisplay(win));
   win.setMinimumSize(minimum.width, minimum.height);
 }
@@ -3403,6 +3412,7 @@ function clampBoundsToDisplayArea(bounds, display) {
 
 function ensureMainWindowInsideDisplay(win) {
   if (!win || win.isDestroyed() || win.isFullScreen()) return;
+  if (win.__macFullscreen && win.__macFullscreen.isTransitioning()) return;
   const display = getWindowDisplay(win);
   updateMainWindowMinimumSize(win);
   const current = win.getBounds();
@@ -3484,6 +3494,10 @@ function applyWindowedBounds(win, displayOverride = null) {
 
 function exitFullscreenToWindow(win) {
   if (!win || win.isDestroyed()) return;
+  if (win.__macFullscreen) {
+    win.__macFullscreen.exit();
+    return;
+  }
   windowFullscreenActive = false;
 
   if (!win.isFullScreen()) {
@@ -3500,6 +3514,10 @@ function exitFullscreenToWindow(win) {
 
 function toggleFullscreen(win) {
   if (!win || win.isDestroyed()) return;
+  if (win.__macFullscreen) {
+    win.__macFullscreen.toggle();
+    return;
+  }
   if (win.isFullScreen() || windowFullscreenActive) {
     exitFullscreenToWindow(win);
     return;
@@ -5308,7 +5326,9 @@ function clearMainWindowFullscreenVisibilityGuard() {
 }
 
 function shouldRestoreUnexpectedMainWindowVisibility(win) {
-  if (!win || win.isDestroyed() || appQuitting || !startupCompleted) return false;
+  // macOS fullscreen is owned by the native Space controller. The Windows
+  // hide/minimize watchdog fights that transition, so it stays off there.
+  if (process.platform === 'darwin' || !startupCompleted) return false;
   if (win.__mineradioIntentionalHide === true || win.__mineradioExpectedVisible === false) return false;
   if (fullDesktopModeHostVisibilityTransitionDepth > 0 || fullDesktopModeRuntime.getStatus('main-window-visibility-guard').enabled === true) return false;
   if (win.isMinimized() || win.isVisible()) return false;
@@ -5316,7 +5336,7 @@ function shouldRestoreUnexpectedMainWindowVisibility(win) {
 }
 
 function shouldRestoreUnexpectedMainWindowMinimize(win) {
-  if (!win || win.isDestroyed() || appQuitting || !startupCompleted) return false;
+  if (process.platform === 'darwin') return false;
   if (win.__mineradioIntentionalHide === true || win.__mineradioExpectedVisible === false) return false;
   if (win.__mineradioIntentionalMinimize === true) return false;
   if (fullDesktopModeHostVisibilityTransitionDepth > 0 || fullDesktopModeRuntime.getStatus('main-window-minimize-guard').enabled === true) return false;
@@ -5324,7 +5344,7 @@ function shouldRestoreUnexpectedMainWindowMinimize(win) {
 }
 
 function shouldRestoreUnexpectedFullscreenVisibility(win) {
-  if (!win || win.isDestroyed() || appQuitting || win.__mineradioIntentionalHide === true) return false;
+  if (process.platform === 'darwin') return false;
   if (fullDesktopModeHostVisibilityTransitionDepth > 0 || fullDesktopModeRuntime.getStatus('fullscreen-visibility-guard').enabled === true) return false;
   if (!win.isFullScreen() || win.isMinimized() || win.isVisible()) return false;
   return true;
@@ -5602,15 +5622,26 @@ async function createWindowOnce() {
     minHeight: initialMinimum.height,
     show: false,
     frame: false,
-    fullscreen: false,
+    // Transparent frameless windows hide the macOS traffic lights and lock the
+    // green fullscreen button. Keep an opaque shell and native hidden title bar
+    // on darwin. Ported from RANGER-ALT823650 PR #67 and Azure12355 PR #485.
+    ...(process.platform === 'darwin' ? {
+      titleBarStyle: 'hidden',
+      trafficLightPosition: { x: 16, y: 14 },
+      fullscreenable: true,
+      transparent: false,
+      backgroundColor: '#010304',
+    } : {
+      fullscreen: false,
+      transparent: true,
+      backgroundColor: '#00000000',
+    }),
     resizable: true,
-    transparent: true,
     opacity: process.env.MINERADIO_STARTUP_QA_HIDDEN === '1' ? 0 : 1,
-    backgroundColor: '#00000000',
     hasShadow: true,
     autoHideMenuBar: true,
     title: APP_NAME,
-    icon: APP_ICON_ICO,
+    icon: APP_ICON_PATH,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -5620,6 +5651,12 @@ async function createWindowOnce() {
     },
   });
   mainWindow = win;
+  if (process.platform === 'darwin') {
+    win.__macFullscreen = createMacFullscreenController(win, {
+      restoreBounds: (bounds) => win.setBounds(clampBoundsToDisplayArea(bounds, screen.getDisplayMatching(bounds)), false),
+    });
+    win.setFullScreenable(true);
+  }
   hookExplorerRestartForFullDesktop(win);
   hookMainWindowMinimizeIntent(win);
   writeStartupState('window-created', { windowCreatedAt: Date.now() });
@@ -5690,7 +5727,7 @@ async function createWindowOnce() {
       requestFullDesktopEscapeExit('escape-key');
       return;
     }
-    if (input.type === 'keyDown' && (input.key === 'Escape' || input.code === 'Escape') && win.isFullScreen()) {
+    if (input.type === 'keyDown' && (input.key === 'Escape' || input.code === 'Escape') && (win.isFullScreen() || (win.__macFullscreen && win.__macFullscreen.isTransitioning()))) {
       event.preventDefault();
       exitFullscreenToWindow(win);
     }
@@ -5756,6 +5793,18 @@ async function createWindowOnce() {
     scheduleWallpaperEngineHostBoundsRestart(win, 'resize');
   });
   win.on('close', (event) => {
+    if (!appQuitting && win.__macFullscreen && (win.isFullScreen() || win.__macFullscreen.isTransitioning())) {
+      event.preventDefault();
+      if (!win.__macClosePending) {
+        win.__macClosePending = true;
+        win.once('leave-full-screen', () => {
+          win.__macClosePending = false;
+          setImmediate(() => { if (!win.isDestroyed()) win.close(); });
+        });
+        win.__macFullscreen.exit();
+      }
+      return;
+    }
     const desktopMode = fullDesktopModeRuntime.getStatus('main-window-close');
     if (desktopMode.enabled === true) {
       event.preventDefault();
@@ -5851,9 +5900,10 @@ async function createWindowOnce() {
     windowFullscreenActive = false;
     setMainWindowFullscreenResizeGuard(win, false);
     clearMainWindowFullscreenVisibilityGuard();
+    sendWindowState(win);
     setTimeout(() => {
       const targetDisplay = getFullscreenTargetDisplay(win);
-      applyWindowedBounds(win, targetDisplay);
+      if (process.platform !== 'darwin') applyWindowedBounds(win, targetDisplay);
       windowFullscreenDisplayId = null;
       scheduleWallpaperEngineHostBoundsRestart(win, 'leave-full-screen');
     }, 50);
@@ -5868,7 +5918,7 @@ async function createWindowOnce() {
     htmlFullscreenActive = false;
     setMainWindowFullscreenResizeGuard(win, false);
     setTimeout(() => {
-      applyWindowedBounds(win);
+      if (process.platform !== 'darwin') applyWindowedBounds(win);
       scheduleWallpaperEngineHostBoundsRestart(win, 'leave-html-full-screen');
     }, 50);
   });
@@ -5931,6 +5981,18 @@ if (!gotSingleInstanceLock) {
   });
 
   app.whenReady().then(async () => {
+    if (process.platform === 'darwin') {
+      Menu.setApplicationMenu(Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { role: 'editMenu' },
+        {
+          label: '显示',
+          submenu: [{ label: '切换全屏', accelerator: 'Control+Command+F', click: () => toggleFullscreen(mainWindow) }],
+        },
+        { role: 'windowMenu' },
+      ]));
+      if (app.dock) app.dock.setIcon(APP_ICON_PATH);
+    }
     try {
       await localMusicLibrary.installProtocol(protocol);
     } catch (error) {

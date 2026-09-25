@@ -176,6 +176,34 @@ renderer.domElement.addEventListener('contextmenu', function (e) {
 //   stage 模式: 鼠标 y > 60% 屏幕高
 //   shift + wheel: 强制滚卡片
 var wheelOverShelf = false;
+var shelfWheelAccumulator = 0;
+var shelfWheelTimer = null;
+var clWheelAccumulator = 0;
+var clWheelTimer = null;
+function consumeTrackpadWheelStep(deltaY, state) {
+  var isMac = !!(window.desktopWindow && window.desktopWindow.platform === 'darwin')
+    || (typeof document !== 'undefined' && document.body && document.body.classList.contains('mac-os'));
+  if (!isMac) return deltaY > 0 ? 1 : -1;
+  // Mac trackpads emit many small deltas per gesture. A mouse notch is usually
+  // one large delta, so it still advances immediately. Ported from RANGER-ALT823650 PR #67.
+  if (shelfWheelTimer && state === 'shelf') clearTimeout(shelfWheelTimer);
+  if (clWheelTimer && state === 'content') clearTimeout(clWheelTimer);
+  var timer = setTimeout(function () {
+    if (state === 'shelf') shelfWheelAccumulator = 0;
+    else clWheelAccumulator = 0;
+  }, 150);
+  if (state === 'shelf') shelfWheelTimer = timer;
+  else clWheelTimer = timer;
+  var next = (state === 'shelf' ? shelfWheelAccumulator : clWheelAccumulator) + deltaY;
+  if (Math.abs(next) < 60) {
+    if (state === 'shelf') shelfWheelAccumulator = next;
+    else clWheelAccumulator = next;
+    return 0;
+  }
+  if (state === 'shelf') shelfWheelAccumulator = 0;
+  else clWheelAccumulator = 0;
+  return next > 0 ? 1 : -1;
+}
 renderer.domElement.addEventListener('wheel', function (e) {
   if (isPointerOverUi(e)) return;
   if (!shelfManager || shelfManager.getMode() === 'off') return;
@@ -191,7 +219,8 @@ renderer.domElement.addEventListener('wheel', function (e) {
       var panelScreenHit = !rowHit && !panelHit && cl.screenContainsPanel ? cl.screenContainsPanel(e.clientX, e.clientY) : false;
       if (!rowHit && !panelHit && !panelScreenHit) return;
       e.preventDefault(); e.stopImmediatePropagation();
-      cl.scrollBy(e.deltaY > 0 ? 1 : -1);
+      var contentStep = consumeTrackpadWheelStep(e.deltaY, 'content');
+      if (contentStep) cl.scrollBy(contentStep);
       return;
     }
   }
@@ -210,7 +239,8 @@ renderer.domElement.addEventListener('wheel', function (e) {
   if (inShelfArea) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    shelfManager.scrollBy(e.deltaY > 0 ? 1 : -1);
+    var shelfStep = consumeTrackpadWheelStep(e.deltaY, 'shelf');
+    if (shelfStep) shelfManager.scrollBy(shelfStep);
   }
 }, { passive: false, capture: true });
 

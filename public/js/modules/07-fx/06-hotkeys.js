@@ -42,11 +42,16 @@ function normalizeHotkeyEvent(e) {
   if (!code) return '';
   return mods.concat([code]).join('+');
 }
+function hotkeyIsMac() {
+  return !!(window.desktopWindow && window.desktopWindow.platform === 'darwin')
+    || (typeof document !== 'undefined' && document.body && document.body.classList.contains('mac-os'));
+}
 function hotkeyDisplayPart(part) {
+  var isMac = hotkeyIsMac();
   if (part === 'Ctrl') return 'Ctrl';
-  if (part === 'Alt') return 'Alt';
+  if (part === 'Alt') return isMac ? 'Opt' : 'Alt';
   if (part === 'Shift') return 'Shift';
-  if (part === 'Meta') return 'Win';
+  if (part === 'Meta') return isMac ? 'Cmd' : 'Win';
   if (part === 'Space') return 'Space';
   if (part === 'ArrowLeft') return 'Left';
   if (part === 'ArrowRight') return 'Right';
@@ -65,11 +70,12 @@ function formatHotkey(hotkey) {
 function hotkeyToAccelerator(hotkey) {
   var parts = String(hotkey || '').split('+').filter(Boolean);
   if (!parts.length) return '';
+  var isMac = hotkeyIsMac();
   return parts.map(function (part) {
     if (part === 'Ctrl') return 'Control';
     if (part === 'Alt') return 'Alt';
     if (part === 'Shift') return 'Shift';
-    if (part === 'Meta') return 'Super';
+    if (part === 'Meta') return isMac ? 'Cmd' : 'Super';
     if (part === 'Space') return 'Space';
     if (part === 'ArrowLeft') return 'Left';
     if (part === 'ArrowRight') return 'Right';

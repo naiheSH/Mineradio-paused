@@ -626,6 +626,18 @@ body.desktop-shell #desktop-titlebar::after {
   color: #fff
 }
 
+body.mac-os .desktop-window-btn {
+  display: none !important
+}
+
+body.mac-os.desktop-shell {
+  background: #010304
+}
+
+body.mac-os.desktop-shell #desktop-titlebar {
+  padding-left: 84px
+}
+
 .desktop-mode-btn {
   height: 30px;
   min-width: 78px;

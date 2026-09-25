@@ -144,6 +144,7 @@ test('Kugou renderer re-login options reach the main handler and retain the logi
       } },
     }),
     window: { addEventListener() {} },
+    process: { platform: 'test' },
   });
   await desktopApi.openKugouMusicLogin({ forceReauth: true });
   assert.equal(calls[0].forceReauth, true);

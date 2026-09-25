@@ -48,3 +48,24 @@ test('legacy memory safety revision survives persistence loading for migration',
     /memorySystemAutoElevate:\s*raw\.memorySystemAutoElevate === true,[\s\S]*?memorySafetyRevision:\s*Number\(raw\.memorySafetyRevision\) \|\| 0,/
   );
 });
+
+test('background memory cleanup does not open a privilege prompt', () => {
+  assert.doesNotMatch(systemMemoryText, /pkexec[\s\S]{0,400}options\.manual !== true/);
+  assert.match(systemMemoryText, /if \(autoElevate && !elevated\) return purgeSystemMemoryElevated\(mask, options\);/);
+  assert.match(systemMemoryText, /execFile\('pkexec'/);
+  const elevatedStart = systemMemoryText.indexOf('function purgeLinuxMemoryElevated');
+  const elevatedEnd = systemMemoryText.indexOf('function purgeSystemMemoryElevated');
+  assert.ok(elevatedStart > 0 && elevatedEnd > elevatedStart);
+  assert.match(systemMemoryText.slice(elevatedStart, elevatedEnd), /pkexec/);
+  const backgroundStart = systemMemoryText.indexOf('function purgeSystemMemory(mask');
+  const backgroundEnd = systemMemoryText.indexOf('function purgeLinuxMemoryElevated');
+  assert.equal(systemMemoryText.slice(backgroundStart, backgroundEnd).includes('pkexec'), false);
+});
+
+test('linux and macOS memory cleanup stay inside their own system calls', () => {
+  assert.match(systemMemoryText, /function linuxMemPurgeScript\(/);
+  assert.match(systemMemoryText, /function purgeDarwinMemoryPressure\(/);
+  assert.match(systemMemoryText, /if \(isLinux\) return purgeLinuxMemoryElevated\(mask\);/);
+  assert.match(systemMemoryText, /if \(isDarwin\) return purgeDarwinMemoryPressure\(\);/);
+  assert.doesNotMatch(systemMemoryText, /System memory purge is Windows-only/);
+});

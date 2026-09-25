@@ -94,7 +94,7 @@ function testWindowVisibilityAndSystemWakeGuards() {
     'function shouldRestoreUnexpectedMainWindowVisibility(win)',
     'function reserveMainWindowRendererRecoveryAttempt()'
   );
-  assert.match(visibilityBlock, /startupCompleted/, 'runtime visibility guard must wait for startup completion');
+  assert.match(visibilityBlock, /process\.platform === 'darwin' \|\| !startupCompleted/, 'runtime visibility guard must wait for startup completion');
   assert.match(visibilityBlock, /win\.__mineradioIntentionalHide === true/, 'tray intentional hide must be skipped');
   assert.match(visibilityBlock, /win\.__mineradioExpectedVisible === false/, 'explicitly hidden windows must not be restored');
   assert.match(visibilityBlock, /fullDesktopModeHostVisibilityTransitionDepth > 0/, 'desktop embedding transitions must be skipped');

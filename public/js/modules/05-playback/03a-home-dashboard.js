@@ -880,6 +880,13 @@ function homePlatformRecommendationFeedConfig(source) {
       readyText: '来自酷狗 FM 推荐',
       playlistName: '酷狗推荐 FM',
     },
+    spotify: {
+      endpoint: '/api/spotify/recommendations?limit=12',
+      sectionTitle: '推荐',
+      cardLabel: 'Spotify 推荐',
+      readyText: '来自 Spotify 推荐',
+      playlistName: 'Spotify 推荐',
+    },
   }[source] || null;
 }
 
